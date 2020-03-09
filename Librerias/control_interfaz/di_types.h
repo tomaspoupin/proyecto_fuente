@@ -19,24 +19,22 @@ typedef struct {
 
 // README: EL di_top_button_handler puede que requiera modificacion, al igual
 // que el di_bottom_button_handler
-#define STEP_OPTION_1 1
-#define STEP_OPTION_2 2
-#define GET_MIN_STEP(cursor) ((cursor > 0)? STEP_OPTION_1 : STEP_OPTION_2)
-#define GET_CARRY(di, step) ((di->display[di->cursor] + step)/10)
+#define GET_MIN_STEP(cursor) 1
 #define CANT_INCREMENT(di) \
-    (di->cursor == 3 && di->display[di->cursor] == 0x09)
-#define CAN_SUM_CARRY(di) (di->cursor < 3)
+    (di->display[di->cursor] == 0x09)
 #define CANT_DECREMENT(di) \
     (di->display[di->cursor] == 0x00)
 
-#define CURSOR_CAN_CHANGE(di) (di->cursor < 3 && di->cursor > 0)
+// #define CURSOR_CAN_CHANGE(di) (di->cursor < 3 && di->cursor >= 0)
+#define CURSOR_CAN_MOVE_RIGHT(di) (di->cursor > 0)
+#define CURSOR_CAN_MOVE_LEFT(di)  (di->cursor < 3)
 static inline void di_right_button_handler(DisplayInfo* di) {
-    if (CURSOR_CAN_CHANGE(di))
-        di->cursor += 1;
+    if (CURSOR_CAN_MOVE_RIGHT(di))
+        di->cursor -= 1;
 }
 static inline void di_left_button_handler(DisplayInfo* di) {
-    if (CURSOR_CAN_CHANGE(di))
-        di->cursor -= 1;
+    if (CURSOR_CAN_MOVE_LEFT(di))
+        di->cursor += 1;
 }
 
 static void di_top_button_handler(DisplayInfo* di) {
@@ -44,11 +42,7 @@ static void di_top_button_handler(DisplayInfo* di) {
 
     else {
         char step = GET_MIN_STEP(di->cursor);
-        char carry = GET_CARRY(di, step);
         di->display[di->cursor] = (di->display[di->cursor] + step)%10;
-        if (CAN_SUM_CARRY(di))
-            di->display[di->cursor + 1] = \
-                di->display[di->cursor + 1] + carry;
     }
 }
 static void di_bottom_button_handler(DisplayInfo* di) {
