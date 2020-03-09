@@ -68,7 +68,7 @@ void ui_interrupt_handler() {
 Button* get_pressed_button() {
     int current_button = 0;
     while(BUTTON_NOT_FOUND) {
-        if (is_button_high(&buttons[current_button])) {
+        if (is_button_low(&buttons[current_button])) {
             // logging
             Serial.println("Button pressed:");
             Serial.println(buttons[current_button].pin);

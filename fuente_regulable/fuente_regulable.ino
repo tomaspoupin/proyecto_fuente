@@ -15,7 +15,7 @@ void setup() {
     ui_map_button(button_pins[3], UI_LEFT_BUTTON);
 
     Serial.begin(9600);
-    attachInterrupt(digitalPinToInterrupt(interrupt_pin), ui_interrupt_handler, RISING);
+    attachInterrupt(digitalPinToInterrupt(interrupt_pin), ui_interrupt_handler, FALLING);
 }
 
 void loop() {

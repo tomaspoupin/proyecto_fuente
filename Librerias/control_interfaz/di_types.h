@@ -17,16 +17,6 @@ typedef struct {
 
 // ------ BUTTON HANDLERS -----------
 
-#define CURSOR_CAN_CHANGE(di) (di->cursor < 3 && di->cursor > 0)
-static inline void di_right_button_handler(DisplayInfo* di) {
-    if (CURSOR_CAN_CHANGE(di))
-        di->cursor += 1;
-}
-static inline void di_left_button_handler(DisplayInfo* di) {
-    if (CURSOR_CAN_CHANGE(di))
-        di->cursor -= 1;
-}
-
 // README: EL di_top_button_handler puede que requiera modificacion, al igual
 // que el di_bottom_button_handler
 #define STEP_OPTION_1 1
@@ -38,6 +28,16 @@ static inline void di_left_button_handler(DisplayInfo* di) {
 #define CAN_SUM_CARRY(di) (di->cursor < 3)
 #define CANT_DECREMENT(di) \
     (di->display[di->cursor] == 0x00)
+
+#define CURSOR_CAN_CHANGE(di) (di->cursor < 3 && di->cursor > 0)
+static inline void di_right_button_handler(DisplayInfo* di) {
+    if (CURSOR_CAN_CHANGE(di))
+        di->cursor += 1;
+}
+static inline void di_left_button_handler(DisplayInfo* di) {
+    if (CURSOR_CAN_CHANGE(di))
+        di->cursor -= 1;
+}
 
 static void di_top_button_handler(DisplayInfo* di) {
     if(CANT_INCREMENT(di)) {}
@@ -95,6 +95,10 @@ static void set_button_handler(Button* button, const ButtonType type) {
 
 static inline bool is_button_high(Button* button) {
     return (digitalRead(button->pin) == HIGH);
+}
+
+static inline bool is_button_low(Button* button) {
+    return (digitalRead(button->pin) == LOW);
 }
 
 #define for_each_button(current_button, button_length) \
