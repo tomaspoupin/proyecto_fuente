@@ -6,12 +6,14 @@
 
 // ------ ESTRUCTURAS ------------
 typedef struct {
-    int cursor; // entre 0 y 3
-    char display[4];
+    volatile int cursor; // entre 0 y 3
+    volatile char display[4];
+    volatile int time_to_die[4];
 } DisplayInfo;
 
 typedef struct {
     unsigned char pin;
+    ButtonType type;
     void (*handler)(DisplayInfo* di);
 } Button;
 
@@ -57,7 +59,7 @@ static void di_bottom_button_handler(DisplayInfo* di) {
 // -------- DisplayInfo ----------------
 
 #define INIT_DISPLAY_INFO(display_info) \
-    display_info = {0, {0, 0, 0, 0}}
+    display_info = {0, {0, 0, 0, 0}, {10, 10, 10, 10}}
 
 // -------- Buttons --------------
 static inline void set_button_pin(Button* button, const unsigned char button_pin) {
@@ -65,6 +67,7 @@ static inline void set_button_pin(Button* button, const unsigned char button_pin
 }
 
 static void set_button_handler(Button* button, const ButtonType type) {
+    button->type = type;
     switch (type)
     {
     case UI_UP_BUTTON:
