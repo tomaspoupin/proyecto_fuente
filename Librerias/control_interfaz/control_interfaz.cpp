@@ -3,38 +3,45 @@
 #include <TimerOne.h>
 
 #define MIN_INTERRUPT_TIME_INTERVAL 200
-#define BUTTON_NUMBER 4
+#define BUTTON_NUMBER 8
+#define VOLTAGE_LENGTH 3
+#define CURRENT_LENGTH 2
+#define VOLTAGE_OFFSET 5
+#define CURRENT_OFFSET 0
 
-static DisplayInfo display_info;
-static Button buttons[BUTTON_NUMBER];
+static DisplayInfo voltage_display_info(VOLTAGE_LENGTH, VOLTAGE_OFFSET);
+static DisplayInfo current_display_info(CURRENT_LENGTH, CURRENT_OFFSET);
+static Button* buttons[BUTTON_NUMBER];
 static int empty_button_index = 0;
 static LedControl* p_display;
+static DisplayInfo* active_display;
 
 static void update_display(DisplayInfo* di) {
-  p_display->setDigit(0, 3, di->display[3], false);
-  p_display->setDigit(0, 2, di->display[2], true);
-  p_display->setDigit(0, 1, di->display[1], false);
-  p_display->setDigit(0, 0, di->display[0], false);
+    for (int i = 0; i < di->length; i++) {
+        p_display->setDigit(0, i + di->offset, di->display[i], i == 1);
+    }
 }
 
 
 static void blink_callback() {
-    static const char space = ' ';
-    update_display(&display_info);
 
-    if (display_info.time_to_die[display_info.cursor] > 0) {
-        if (display_info.time_to_die[display_info.cursor] % 2 == 0)
+    static const char space = ' ';
+    update_display(&voltage_display_info);
+    update_display(&current_display_info);
+
+    if (active_display->time_to_die[active_display->cursor] > 0) {
+        if (active_display->time_to_die[active_display->cursor] % 2 == 0)
             p_display->setDigit(0, 
-                                display_info.cursor, 
-                                display_info.display[display_info.cursor], 
-                                display_info.cursor == 2);
+                                active_display->cursor + active_display->offset, 
+                                active_display->display[active_display->cursor], 
+                                active_display->cursor == 1);
         else
             p_display->setChar(0, 
-                               display_info.cursor,
+                               active_display->cursor + active_display->offset,
                                space,
-                               display_info.cursor == 2);
+                               active_display->cursor == 1);
         
-        display_info.time_to_die[display_info.cursor] -= 1;
+        active_display->time_to_die[active_display->cursor] -= 1;
     }
 }
 
@@ -43,17 +50,12 @@ static void blink_callback() {
 
 // ------------------ Definicion Interfaz UI ------------------------
 void ui_init_display(const unsigned char data_in, const unsigned char clk, const unsigned char load_cs) {
-    INIT_DISPLAY_INFO(display_info);
     static LedControl display = LedControl(data_in, clk, load_cs, 1);
     display.shutdown(0, false);
     display.setIntensity(0, 8);
     display.clearDisplay(0);
 
     p_display = &display;
-    p_display->setDigit(0, 3, 0x00, false);
-    p_display->setDigit(0, 2, 0x00, true);
-    p_display->setDigit(0, 1, 0x00, false);
-    p_display->setDigit(0, 0, 0x00, false);
 
     Timer1.initialize(100000);
     Timer1.attachInterrupt(blink_callback);
@@ -66,10 +68,14 @@ void ui_init_buttons(const unsigned char* button_pins, const int button_number) 
     }
 }
 
-void ui_map_button(const unsigned char button_pin, const ButtonType button_type) {
-    Button new_button;
-    set_button_pin(&new_button, button_pin);
-    set_button_handler(&new_button, button_type);
+void ui_map_voltage_button(const unsigned char button_pin, const ButtonType button_type) {
+    Button* new_button = new Button(button_pin, button_type, &voltage_display_info);
+    buttons[empty_button_index] = new_button;
+    empty_button_index += 1;
+}
+
+void ui_map_current_button(const unsigned char button_pin, const ButtonType button_type) {
+    Button* new_button = new Button(button_pin, button_type, &current_display_info);
     buttons[empty_button_index] = new_button;
     empty_button_index += 1;
 }
@@ -81,17 +87,25 @@ void ui_interrupt_handler() {
     int interrupt_time = millis();
     if ((interrupt_time - start_time) < MIN_INTERRUPT_TIME_INTERVAL) 
         return;
-
+    //Serial.println("boton presionado");
     // Comienza zona de interrupcion
     Button* active_button = get_pressed_button();
-    active_button->handler(&display_info);
-    update_display(&display_info);
-    
-    if (active_button->type == UI_LEFT_BUTTON || active_button->type == UI_RIGHT_BUTTON) {
-        for (int i = 0; i < 4; i ++)
-            display_info.time_to_die[i] = 10;
-    }
+/*     Serial.print("Boton ");
+    Serial.print(active_button->pin);
+    Serial.println(" Presionado."); */
+    active_button->handler(active_button->display_info);
+    update_display(active_button->display_info);
+    active_display = active_button->display_info;
 
+    float voltaje = voltage_display_info.display[0]*0.1f \
+                  + voltage_display_info.display[1]*1.0f \
+                  + voltage_display_info.display[2]*10.0f;
+    float corriente = current_display_info.display[0]*0.1f \
+                    + current_display_info.display[1]*1.0f;
+    Serial.print("Voltaje: ");
+    Serial.println(voltaje);
+    Serial.print("Corriente: ");
+    Serial.println(corriente);
     start_time = millis();
     interrupts();
 }
@@ -99,12 +113,12 @@ void ui_interrupt_handler() {
 Button* get_pressed_button() {
     int current_button = 0;
     while(BUTTON_NOT_FOUND) {
-        if (is_button_low(&buttons[current_button])) {
+        if (buttons[current_button]->is_pressed()) {
             /* logging 
             Serial.println("Button pressed:");
             Serial.println(buttons[current_button].pin);
             Serial.println(" "); */
-            return &buttons[current_button]; 
+            return buttons[current_button]; 
         }
         current_button += 1;
         if (current_button == BUTTON_NUMBER)
